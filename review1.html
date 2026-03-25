@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review 1 - Grasse Reading Reorder Game</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const DATABASE_URL = "在此處貼上你的部署網址";
+
+        const App = () => {
+            const [studentName, setStudentName] = useState("");
+            const [isStarted, setIsStarted] = useState(false);
+
+            const initialSections = [
+                { id: "g1", defaultLabel: "P1: Grasse and Perfume Identity", sentences: [
+                    { id: "g1-1", text: "When it comes to perfume production, one country stands out above the rest: France.", order: 1, hint: "Who leads?", level: 0 },
+                    { id: "g1-2", text: "As the world's largest perfume developer, it occupies more or less 30% of the enormous global market.", order: 2, hint: "How much?", level: 1 },
+                    { id: "g1-3", text: "Of all the French towns where perfume is produced, one town is more associated with the industry than any other: Grasse.", order: 3, hint: "Which town?", level: 1 },
+                    { id: "g1-4", text: "This town's history and identity are so closely tied to scent-making that when people hear the name \"Grasse,\" perfume immediately comes to mind.", order: 4, hint: "Why famous?", level: 2 }
+                ]},
+                { id: "g2", defaultLabel: "P2: From Leather to Perfume", sentences: [
+                    { id: "g2-1", text: "In the Middle Ages, however, Grasse was known for high-quality leather-tanning products.", order: 1, hint: "Past trade", level: 0 },
+                    { id: "g2-2", text: "As popular as these were, the tanning process nonetheless left an awful smell on the leather.", order: 2, hint: "Problem?", level: 1 },
+                    { id: "g2-3", text: "In the 16th century, a local tanner suggested rubbing perfume on leather gloves to reduce their unpleasant odor.", order: 3, hint: "First fix", level: 2 },
+                    { id: "g2-4", text: "After one pair was presented as a royal gift to the Queen of France, the perfumed leather trend spread rapidly across Europe.", order: 4, hint: "Spread how?", level: 2 },
+                    { id: "g2-5", text: "As a result, Grasse's perfume industry sprang up, and by the 18th century the town had become a primary producer of scents.", order: 5, hint: "Final result", level: 1 }
+                ]},
+                { id: "g3", defaultLabel: "P3: Geography and Natural Advantages", sentences: [
+                    { id: "g3-1", text: "In fact, it was not by chance that Grasse became the cradle of the perfume industry.", order: 1, hint: "By chance?", level: 0 },
+                    { id: "g3-2", text: "The region around the town has long enjoyed ideal conditions for growing flowers and other vegetation used in making perfumes.", order: 2, hint: "Where is it?", level: 1 },
+                    { id: "g3-3", text: "Situated in southeastern France, Grasse is blessed with abundant sunshine, a gentle climate, and fertile soil.", order: 3, hint: "Natural edge", level: 2 },
+                    { id: "g3-4", text: "Therefore, a combination of historical and geographical factors has allowed Grasse to become a household name in the world of perfume.", order: 4, hint: "So what?", level: 1 }
+                ]},
+                { id: "g4", defaultLabel: "P4: The \"Noses\" and Craftsmanship", sentences: [
+                    { id: "g4-1", text: "Thanks to its reputation and status as a scent producer, Grasse also attracts many perfume professionals.", order: 1, hint: "Who comes?", level: 0 },
+                    { id: "g4-2", text: "The most remarkable of these are the \"noses,\" experts who receive years of training and can identify over two thousand distinct smells.", order: 2, hint: "Top experts", level: 1 },
+                    { id: "g4-3", text: "Though they belong to a highly specialized profession, noses rely very little on scientific methods and instead use their own powerful sense of smell.", order: 3, hint: "Work style", level: 2 },
+                    { id: "g4-4", text: "They spend enormous amounts of time developing precise combinations, and can often be seen sniffing strips of paper soaked in perfume.", order: 4, hint: "Daily task", level: 2 },
+                    { id: "g4-5", text: "As true guardians of a multi-billion-euro industry, noses play a crucial role in the perfume business.", order: 5, hint: "Big role", level: 1 }
+                ]},
+                { id: "g5", defaultLabel: "P5: Lasting Legacy of Grasse", sentences: [
+                    { id: "g5-1", text: "To this day, Grasse continues to rely on these talented guardians and other traditional industry methods to produce unique perfumes.", order: 1, hint: "Still today", level: 0 },
+                    { id: "g5-2", text: "The town's fascinating history, rich environment, and expert scent developers indeed make it the gem of the global perfume market--a glorious treasure that smells simply divine.", order: 2, hint: "Main idea", level: 1 }
+                ]}
+            ];
+
+            const [sections] = useState(initialSections);
+            const [labels, setLabels] = useState(initialSections.reduce((acc, sec) => ({ ...acc, [sec.id]: sec.defaultLabel }), {}));
+            const [shuffledSentences, setShuffledSentences] = useState([]);
+            const [userPlacements, setUserPlacements] = useState({});
+            const [isEditingLabels, setIsEditingLabels] = useState(false);
+            const [sectionFeedback, setSectionFeedback] = useState({});
+
+            useEffect(() => {
+                if (typeof lucide !== "undefined" && lucide.createIcons) {
+                    lucide.createIcons();
+                }
+            });
+
+            const shuffleArray = (array) => {
+                let currentIndex = array.length, randomIndex;
+                const newArray = [...array];
+                while (currentIndex !== 0) {
+                    randomIndex = Math.floor(Math.random() * currentIndex);
+                    currentIndex--;
+                    [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
+                }
+                if (newArray.length > 1 && JSON.stringify(newArray.map(i => i.order)) === JSON.stringify(array.map(i => i.order))) {
+                    return shuffleArray(array);
+                }
+                return newArray;
+            };
+
+            const initGame = () => {
+                const allShuffled = initialSections.map(sec => ({
+                    sectionId: sec.id,
+                    sentences: shuffleArray(sec.sentences)
+                }));
+                setShuffledSentences(allShuffled);
+                setUserPlacements({});
+                setSectionFeedback({});
+            };
+
+            useEffect(() => { initGame(); }, []);
+
+            const handleDrop = (sectionId, orderIndex, sentence) => {
+                setUserPlacements(prev => ({ ...prev, [`${sectionId}-${orderIndex}`]: sentence }));
+                setSectionFeedback(prev => { const next = { ...prev }; delete next[sectionId]; return next; });
+            };
+
+            const checkSection = async (sectionId) => {
+                const section = sections.find(s => s.id === sectionId);
+                let results = {};
+                let allCorrect = true;
+                let anyMissing = false;
+
+                section.sentences.forEach((_, idx) => {
+                    const placed = userPlacements[`${sectionId}-${idx}`];
+                    if (!placed) {
+                        anyMissing = true;
+                        allCorrect = false;
+                    } else {
+                        const isCorrect = placed.order === (idx + 1);
+                        results[idx] = isCorrect ? "correct" : "wrong";
+                        if (!isCorrect) allCorrect = false;
+                    }
+                });
+
+                const status = anyMissing ? "incomplete" : (allCorrect ? "correct" : "wrong");
+                setSectionFeedback(prev => ({ ...prev, [sectionId]: { status, results } }));
+
+                if (!anyMissing && DATABASE_URL !== "在此處貼上你的部署網址") {
+                    const score = `${Object.values(results).filter(v => v === "correct").length}/${section.sentences.length}`;
+                    try {
+                        fetch(DATABASE_URL, {
+                            method: "POST",
+                            mode: "no-cors",
+                            body: JSON.stringify({
+                                name: studentName,
+                                section: labels[sectionId],
+                                status: allCorrect ? "全對" : "有誤",
+                                score: score
+                            })
+                        });
+                    } catch (e) {
+                        console.error("傳送失敗", e);
+                    }
+                }
+            };
+
+            const removePlacement = (key, sectionId) => {
+                setUserPlacements(prev => { const next = { ...prev }; delete next[key]; return next; });
+                setSectionFeedback(prev => { const next = { ...prev }; delete next[sectionId]; return next; });
+            };
+
+            const getSentenceMeta = (sectionId, idx) => {
+                return sections.find(sec => sec.id === sectionId)?.sentences[idx] || null;
+            };
+
+            if (!isStarted) {
+                return (
+                    <div className="h-screen flex items-center justify-center bg-indigo-600 p-4">
+                        <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md animate-fadeIn text-center">
+                            <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
+                                <i data-lucide="user-plus" className="w-10 h-10"></i>
+                            </div>
+                            <h1 className="text-2xl font-black text-slate-800 mb-2">Review 1 登入</h1>
+                            <p className="text-slate-500 text-sm mb-8">請輸入姓名或座號後開始作答</p>
+                            <input
+                                type="text"
+                                placeholder="例如：1號 王小明"
+                                className="w-full border-2 border-slate-100 rounded-xl p-4 mb-6 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all text-center font-bold text-lg"
+                                value={studentName}
+                                onChange={(e) => setStudentName(e.target.value)}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => studentName.trim() && setIsStarted(true)}
+                                className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-lg hover:bg-indigo-700 shadow-lg shadow-indigo-200 active:scale-[0.98] transition-all"
+                            >
+                                開始挑戰
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="h-screen bg-slate-100 flex flex-col font-sans text-slate-800 overflow-hidden">
+                    <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-50 h-16 shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-600 rounded-lg text-white">
+                                <i data-lucide="book-open" className="w-5 h-5 block"></i>
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-bold text-slate-900 leading-tight">Review 1: Grasse</h1>
+                                <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest">Player: {studentName}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsEditingLabels(!isEditingLabels)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition ${isEditingLabels ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                            >
+                                {isEditingLabels ? "Save" : "Edit Labels"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={initGame}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 rounded-md text-xs font-bold hover:bg-slate-200 transition"
+                            >
+                                Reset
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="flex-1 flex overflow-hidden">
+                        <aside className="w-96 bg-white border-r border-slate-200 flex flex-col shadow-lg z-40 h-full">
+                            <div className="p-4 border-b border-slate-100 bg-slate-50">
+                                <h2 className="text-xs font-black text-slate-500 uppercase tracking-wider">Sentence Bank</h2>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+                                {shuffledSentences.map(group => (
+                                    <div key={group.sectionId} className="space-y-2 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                                        <div className="flex items-center justify-between px-1 mb-2">
+                                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-100 px-2 py-0.5 rounded">
+                                                {labels[group.sectionId].split(":")[0]}
+                                            </span>
+                                        </div>
+                                        {group.sentences.map(s => {
+                                            const isUsed = Object.values(userPlacements).some(p => p.id === s.id);
+                                            return (
+                                                <div
+                                                    key={s.id}
+                                                    draggable={!isUsed}
+                                                    onDragStart={(e) => {
+                                                        e.dataTransfer.setData("sentence", JSON.stringify(s));
+                                                        e.dataTransfer.setData("sourceSection", group.sectionId);
+                                                    }}
+                                                    className={`p-3 rounded-lg border text-[12px] leading-relaxed transition-all ${isUsed ? "bg-slate-100 text-slate-300 border-slate-100 italic opacity-50" : "bg-white border-slate-200 shadow-sm hover:border-indigo-400 cursor-grab active:cursor-grabbing"}`}
+                                                >
+                                                    <p>{s.text}</p>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        </aside>
+
+                        <main className="flex-1 overflow-auto bg-slate-50 h-full custom-scrollbar">
+                            <div className="p-12 min-w-max flex items-center">
+                                <div className="flex-shrink-0 mr-24 relative">
+                                    <div className="bg-indigo-600 text-white px-8 py-6 rounded-2xl shadow-xl border-4 border-white z-10 relative text-center">
+                                        <h2 className="text-sm font-black uppercase tracking-[0.2em] mb-1 opacity-80 text-indigo-200">Main Topic</h2>
+                                        <div className="text-xl font-black whitespace-nowrap">Grasse: The Perfume Capital</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col space-y-8 py-10">
+                                    {sections.map((section) => {
+                                        const feedback = sectionFeedback[section.id] || { status: "none", results: {} };
+                                        return (
+                                            <div key={section.id} className="flex items-center gap-6 group">
+                                                <div className="w-[700px] rounded-2xl border-2 transition-all shadow-md overflow-hidden bg-white hover:border-indigo-300">
+                                                    <div className="px-5 py-3 border-b flex justify-between items-center bg-slate-50">
+                                                        {isEditingLabels ? (
+                                                            <input
+                                                                type="text"
+                                                                value={labels[section.id]}
+                                                                onChange={(e) => setLabels(prev => ({ ...prev, [section.id]: e.target.value }))}
+                                                                className="flex-1 mr-2 text-xs font-black text-slate-700 uppercase border border-indigo-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-200"
+                                                            />
+                                                        ) : (
+                                                            <h3 className="text-xs font-black text-slate-700 uppercase">{labels[section.id]}</h3>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => checkSection(section.id)}
+                                                            className="px-3 py-1 rounded-lg text-[9px] font-black bg-indigo-600 text-white uppercase tracking-widest shrink-0"
+                                                        >
+                                                            Submit
+                                                        </button>
+                                                    </div>
+                                                    <div className="p-5 pl-8 space-y-3 border-l-2 border-indigo-100 ml-3">
+                                                        {section.sentences.map((_, idx) => {
+                                                            const key = `${section.id}-${idx}`;
+                                                            const placed = userPlacements[key];
+                                                            const result = feedback.results[idx];
+                                                            const targetMeta = getSentenceMeta(section.id, idx);
+                                                            const level = targetMeta ? targetMeta.level : 0;
+                                                            const hint = targetMeta ? targetMeta.hint : "";
+                                                            const indentClass = ["ml-0", "ml-8", "ml-16"][level] || "ml-16";
+                                                            return (
+                                                                <div
+                                                                    key={idx}
+                                                                    onDragOver={(e) => e.preventDefault()}
+                                                                    onDrop={(e) => {
+                                                                        const s = JSON.parse(e.dataTransfer.getData("sentence"));
+                                                                        if (e.dataTransfer.getData("sourceSection") === section.id) handleDrop(section.id, idx, s);
+                                                                    }}
+                                                                    className={`min-h-[4.2rem] rounded-xl border-2 border-dashed flex items-center px-4 py-2 text-[12px] relative ${indentClass} ${placed ? "border-transparent bg-slate-50" : "border-slate-100 bg-slate-50/30"}`}
+                                                                >
+                                                                    {level > 0 && <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-6 border-t-2 border-indigo-100"></div>}
+                                                                    <div className="absolute -left-3 bg-white border border-slate-200 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black">{idx + 1}</div>
+                                                                    <div className="absolute top-1 left-8 text-[10px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded px-2 py-0.5">
+                                                                        Hint: {hint}
+                                                                    </div>
+                                                                    {placed ? (
+                                                                        <div className="flex items-start gap-3 w-full pt-4">
+                                                                            <div className="flex-1">
+                                                                                <p>{placed.text}</p>
+                                                                            </div>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => removePlacement(key, section.id)}
+                                                                                className="p-1 text-slate-300 hover:text-rose-500"
+                                                                                aria-label="移除句子"
+                                                                            >
+                                                                                <i data-lucide="rotate-ccw" className="w-3 h-3 block"></i>
+                                                                            </button>
+                                                                            {result === "correct" && <span className="text-emerald-500">✔</span>}
+                                                                            {result === "wrong" && <span className="text-rose-500">✘</span>}
+                                                                        </div>
+                                                                    ) : <span className="text-slate-300 italic w-full text-center">Drop here...</span>}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(<App />);
+    </script>
+</body>
+</html>
